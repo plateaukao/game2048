@@ -16,33 +16,33 @@
     touch-action: none;
     user-select: none;
   }
-  .container { text-align: center; }
-  h1 { font-size: 64px; color: #776e65; margin-bottom: 8px; }
+  .container { text-align: center; width: min(420px, calc(100vw - 24px)); }
+  h1 { font-size: clamp(36px, 10vw, 64px); color: #776e65; margin-bottom: 8px; }
   .header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
   }
-  .scores { display: flex; gap: 8px; }
+  .scores { display: flex; gap: 6px; }
   .score-box {
     background: #bbada0;
     color: #fff;
-    padding: 8px 20px;
+    padding: 6px 12px;
     border-radius: 6px;
     font-size: 14px;
     text-align: center;
-    min-width: 80px;
+    min-width: 60px;
   }
-  .score-box .label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
-  .score-box .value { font-size: 22px; font-weight: bold; }
+  .score-box .label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+  .score-box .value { font-size: clamp(16px, 5vw, 22px); font-weight: bold; }
   .btn {
     background: #8f7a66;
     color: #f9f6f2;
     border: none;
     border-radius: 6px;
-    padding: 10px 20px;
-    font-size: 16px;
+    padding: 8px 16px;
+    font-size: 14px;
     font-weight: bold;
     cursor: pointer;
     transition: background 0.15s;
@@ -52,27 +52,23 @@
     position: relative;
     background: #bbada0;
     border-radius: 8px;
-    padding: 12px;
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
-    width: 420px;
-    height: 420px;
+    width: 100%;
+    aspect-ratio: 1;
   }
   .cell {
     background: rgba(238,228,218,0.35);
     border-radius: 6px;
+    margin: 2.8%;
   }
   .tile {
     position: absolute;
-    width: 87px;
-    height: 87px;
     border-radius: 6px;
     display: flex;
     justify-content: center;
     align-items: center;
     font-weight: bold;
-    font-size: 38px;
     transition: top 0.12s ease, left 0.12s ease;
     z-index: 1;
   }
@@ -109,7 +105,7 @@
   .overlay h2 { font-size: 48px; color: #776e65; margin-bottom: 16px; }
   .overlay.win { background: rgba(237,194,46,0.5); }
   .overlay.win h2 { color: #f9f6f2; }
-  .message { font-size: 14px; color: #776e65; margin-top: 12px; }
+  .message { font-size: 14px; color: #776e65; margin-top: 12px; padding: 0 8px; }
 </style>
 </head>
 <body>
@@ -145,19 +141,19 @@
 
 <script>
 const TILE_COLORS = {
-  2:    { bg: '#eee4da', fg: '#776e65', size: 38 },
-  4:    { bg: '#ede0c8', fg: '#776e65', size: 38 },
-  8:    { bg: '#f2b179', fg: '#f9f6f2', size: 38 },
-  16:   { bg: '#f59563', fg: '#f9f6f2', size: 38 },
-  32:   { bg: '#f67c5f', fg: '#f9f6f2', size: 38 },
-  64:   { bg: '#f65e3b', fg: '#f9f6f2', size: 38 },
-  128:  { bg: '#edcf72', fg: '#f9f6f2', size: 32 },
-  256:  { bg: '#edcc61', fg: '#f9f6f2', size: 32 },
-  512:  { bg: '#edc850', fg: '#f9f6f2', size: 32 },
-  1024: { bg: '#edc53f', fg: '#f9f6f2', size: 26 },
-  2048: { bg: '#edc22e', fg: '#f9f6f2', size: 26 },
+  2:    { bg: '#eee4da', fg: '#776e65', scale: 1 },
+  4:    { bg: '#ede0c8', fg: '#776e65', scale: 1 },
+  8:    { bg: '#f2b179', fg: '#f9f6f2', scale: 1 },
+  16:   { bg: '#f59563', fg: '#f9f6f2', scale: 1 },
+  32:   { bg: '#f67c5f', fg: '#f9f6f2', scale: 1 },
+  64:   { bg: '#f65e3b', fg: '#f9f6f2', scale: 1 },
+  128:  { bg: '#edcf72', fg: '#f9f6f2', scale: 0.84 },
+  256:  { bg: '#edcc61', fg: '#f9f6f2', scale: 0.84 },
+  512:  { bg: '#edc850', fg: '#f9f6f2', scale: 0.84 },
+  1024: { bg: '#edc53f', fg: '#f9f6f2', scale: 0.68 },
+  2048: { bg: '#edc22e', fg: '#f9f6f2', scale: 0.68 },
 };
-const DEFAULT_COLOR = { bg: '#3c3a32', fg: '#f9f6f2', size: 22 };
+const DEFAULT_COLOR = { bg: '#3c3a32', fg: '#f9f6f2', scale: 0.58 };
 
 class Game {
   constructor() {
@@ -199,13 +195,19 @@ class Game {
     return [r, c];
   }
 
-  tilePos(r, c) {
-    return { top: 12 + r * 99, left: 12 + c * 99 };
+  getCellRects() {
+    const cells = this.boardEl.querySelectorAll('.cell');
+    const boardRect = this.boardEl.getBoundingClientRect();
+    return Array.from(cells).map(cell => {
+      const r = cell.getBoundingClientRect();
+      return { top: r.top - boardRect.top, left: r.left - boardRect.left, width: r.width, height: r.height };
+    });
   }
 
   render(newTiles = [], mergedTiles = []) {
     this.tileEls.forEach(el => el.remove());
     this.tileEls = [];
+    const rects = this.getCellRects();
     for (let r = 0; r < 4; r++) {
       for (let c = 0; c < 4; c++) {
         const val = this.grid[r][c];
@@ -213,8 +215,9 @@ class Game {
         const el = document.createElement('div');
         el.className = 'tile';
         const color = TILE_COLORS[val] || DEFAULT_COLOR;
-        const pos = this.tilePos(r, c);
-        el.style.cssText = `top:${pos.top}px;left:${pos.left}px;background:${color.bg};color:${color.fg};font-size:${color.size}px;`;
+        const rect = rects[r * 4 + c];
+        const fontSize = rect.height * 0.44 * color.scale;
+        el.style.cssText = `top:${rect.top}px;left:${rect.left}px;width:${rect.width}px;height:${rect.height}px;background:${color.bg};color:${color.fg};font-size:${fontSize}px;`;
         el.textContent = val;
         if (newTiles.some(([nr, nc]) => nr === r && nc === c)) {
           el.classList.add('new');
@@ -320,7 +323,7 @@ class Game {
     });
 
     let startX, startY;
-    const board = this.boardEl;
+    const board = document.body;
     board.addEventListener('touchstart', e => {
       startX = e.touches[0].clientX;
       startY = e.touches[0].clientY;
@@ -337,6 +340,7 @@ class Game {
 }
 
 const game = new Game();
+window.addEventListener('resize', () => game.render());
 </script>
 </body>
 </html>
